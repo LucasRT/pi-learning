@@ -50,3 +50,22 @@ when it comes to reliable tool-calling. Worth remembering if a future
 model swap (e.g. for the real project in week 3+) starts misbehaving —
 check whether it's a config issue or a model-capability issue first,
 the way this was.
+
+## Week 0 reading — done (2026-08-21)
+
+**Pi's philosophy**: Agent = Model + Harness. 4 tools only (read/write/edit/bash),
+no built-in search/list/etc — the model shells out for those. System prompt
+kept under ~1000 tokens (vs. e.g. Claude Code's ~55k). Deliberately omits
+sub-agents, plan mode, permission gating from core — those are extension-built,
+not framework-opinionated. 4 run modes: interactive, print/JSON, RPC
+(stdin/stdout JSON — next week's exercise), SDK (embed in Node app).
+
+**TS-for-Python primer**: type annotations map onto Python type hints
+(`name: string` vs `name: str`), `interface` ~= dataclass/TypedDict,
+`async`/`await` ~= asyncio (no explicit event loop needed), npm/package.json
+~= pip/requirements.txt, node_modules ~= venv site-packages (per-project by
+default). Main adjustment: more explicit typing up front, and a `tsc` compile
+step (Pi's tooling handles this when writing extensions).
+
+Week 0 complete. Model working end-to-end (llama3.1:8b via Ollama, confirmed
+real tool calls). Ready for Week 1: RPC mode + driving Pi from Python.

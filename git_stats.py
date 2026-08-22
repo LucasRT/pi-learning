@@ -1,21 +1,30 @@
-import os
-import git
-import calendar
+#!/usr/bin/env python3
+"""git_stats.py — commit frequency and most-changed files in this repo."""
+
 import collections
-def main():    # Git repo path    repo_path = '/Users/bopeng/Projects/pi-learning'
+import git
 
-    # Initialize Git    repo = git.Git(repo_path)
 
-    # Get commits per day    commits_per_day = {}
-    for commit in repo.log():        commits_per_day[commit] = commits_per_day.get(commit, 0) + 1
+def main() -> None:
+    repo = git.Repo(".")
 
-    # Get files changed most often    files_changed = {}
-    for commit in repo.log():        for file in commit.stats.files:
-            files_changed[file] = files_changed.get(file, 0) + 1
+    commits_per_day = collections.Counter()
+    files_changed = collections.Counter()
 
-    # Print results    print('Commits per day:')
-    for date, count in commits_per_day.items():        print(f'{date}: {count}')
-    print('Files changed most often:')
-    for file, count in files_changed.items():        print(f'{file}: {count}')
-if __name__ == '__main__':
+    for commit in repo.iter_commits():
+        day = commit.committed_datetime.date().isoformat()
+        commits_per_day[day] += 1
+        for filename in commit.stats.files:
+            files_changed[filename] += 1
+
+    print("Commits per day:")
+    for day, count in sorted(commits_per_day.items()):
+        print(f"  {day}: {count}")
+
+    print("\nFiles changed most often:")
+    for filename, count in files_changed.most_common():
+        print(f"  {filename}: {count}")
+
+
+if __name__ == "__main__":
     main()

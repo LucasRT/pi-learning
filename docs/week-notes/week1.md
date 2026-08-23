@@ -75,4 +75,4 @@ model ends up powering the real project.
 Final `git_stats.py`: written manually from a known-correct reference
 after the corrupted version proved not worth continuing to debug via Pi.
 
-Week 1 complete.
+Week 1 complete. Yay!

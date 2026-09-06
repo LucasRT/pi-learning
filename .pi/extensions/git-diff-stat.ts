@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { execSync } from "child_process";
+import { fetchPRDiff } from "../utils/github";
 
 function getDiffStat(): string {
   try {
@@ -22,6 +23,22 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({}),
     async execute() {
       return { content: [{ type: "text", text: getDiffStat() }] };
+    },
+  });
+
+  // TOOL — fetches a PR's diff from the GitHub API (Week 3 work in progress).
+  pi.registerTool({
+    name: "fetch_pr_diff",
+    label: "Fetch PR Diff",
+    description: "Fetch the diff for a specific PR number",
+    promptSnippet: "Fetch the diff for PR #{{pr_number}}",
+    promptGuidelines: ["Use fetch_pr_diff to get the raw diff text for a specific PR number."],
+    parameters: Type.Object({
+      pr_number: Type.Integer({ description: "The PR number to fetch the diff for" }),
+    }),
+    async execute({ pr_number }) {
+      const diff = await fetchPRDiff(pr_number);
+      return { content: [{ type: "text", text: diff }] };
     },
   });
 

@@ -36,7 +36,7 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       pr_number: Type.Integer({ description: "The PR number to fetch the diff for" }),
     }),
-    async execute({ pr_number }) {
+    async execute(_toolCallId, { pr_number }) {
       const diff = await fetchPRDiff(pr_number);
       return { content: [{ type: "text", text: diff }] };
     },

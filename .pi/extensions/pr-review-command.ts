@@ -1,28 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-
-/**
- * Pull the plain text out of an assistant message. We deliberately
- * duck-type this instead of importing AssistantMessage/TextContent from
- * @earendil-works/pi-ai, because that package is only hoisted into
- * pi-coding-agent's own nested node_modules, not into ours — importing
- * it directly fails to resolve. Structural typing sidesteps that.
- */
-function extractAssistantText(message: unknown): string {
-  const m = message as { role?: string; content?: unknown };
-  if (m?.role !== "assistant" || !Array.isArray(m.content)) {
-    return "";
-  }
-  return m.content
-    .filter((c: any) => c && c.type === "text" && typeof c.text === "string")
-    .map((c: any) => c.text as string)
-    .join("\n");
-}
-
-// Matches the "# Review: PR #<number>" heading the pr-review skill is
-// instructed to produce as the first line of its report.
-const REVIEW_HEADING = /^#\s*Review:\s*PR\s*#(\d+)/m;
+import { extractAssistantText, parseReviewPrNumber } from "../utils/review-parsing";
 
 export default function (pi: ExtensionAPI) {
   // COMMAND — "/review <pr-number>" is a convenience shortcut that kicks
@@ -63,11 +42,10 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
-    const match = latestAssistantText.match(REVIEW_HEADING);
-    if (!match) {
+    const prNumber = parseReviewPrNumber(latestAssistantText);
+    if (!prNumber) {
       return; // not a finished review — nothing to save
     }
-    const prNumber = match[1];
 
     const reviewsDir = path.join(ctx.cwd, "reviews");
     await mkdir(reviewsDir, { recursive: true });

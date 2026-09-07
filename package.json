@@ -1,4 +1,22 @@
 {
+  "name": "pi-learning",
+  "version": "0.1.0",
+  "description": "PR Review Companion: a Pi extension package that fetches a PR's diff, checks it against the project's type checks, and drafts a structured review.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LucasRT/pi-learning.git"
+  },
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [".pi/extensions"],
+    "skills": [".pi/skills"]
+  },
+  "scripts": {
+    "test": "node --test .pi/utils/*.test.ts",
+    "typecheck": "npx tsc"
+  },
   "dependencies": {
     "axios": "^1.19.0",
     "typescript": "^7.0.2"

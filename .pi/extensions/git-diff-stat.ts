@@ -2,15 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { execSync } from "child_process";
 import { fetchPRDiff } from "../utils/github";
-
-function getDiffStat(): string {
-  try {
-    const output = execSync("git diff --stat", { encoding: "utf-8" });
-    return output || "No changes.";
-  } catch (err) {
-    return `Error: ${(err as Error).message}`;
-  }
-}
+import { getDiffStat } from "../utils/git";
 
 export default function (pi: ExtensionAPI) {
   // TOOL — run type checks on the whole project, via tsconfig.json
@@ -47,7 +39,7 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // TOOL — fetches a PR's diff from the GitHub API (Week 3 work in progress).
+  // TOOL — fetches a PR's diff from the GitHub API.
   pi.registerTool({
     name: "fetch_pr_diff",
     label: "Fetch PR Diff",

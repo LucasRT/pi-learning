@@ -85,5 +85,28 @@ Foundry portal if this keeps interrupting work, or switching to a
 different deployed model (Kimi/Claude/GPT-5.4-mini/Llama) when it happens
 rather than waiting.
 
+## Scoping run_checks to the whole project
+Originally `run_checks` called `tsc` with two hardcoded file paths, so it
+only ever checked those two files — a new extension file added later
+would be silently invisible to it. Fixed by adding a root `tsconfig.json`
+with `"include": [".pi/**/*.ts"]` and changing `run_checks` to just run
+`npx tsc` (no file args), which now picks up every `.ts` file under
+`.pi/` automatically as the project grows.
+
+Hit one real snag getting there: the installed TypeScript is v7.0.2, a
+very new major version. `"moduleResolution": "node"` has been removed
+in TS7 (error TS5108, it's treated as the deprecated `node10` strategy).
+Tried `"node16"` next, but that enforces strict CJS/ESM interop rules
+and broke on `typebox` (an ESM-only package) being required from a
+CommonJS file. Since this tsconfig only ever type-checks (`noEmit: true`
+— nothing is actually emitted or run from it), the right fix was
+`"moduleResolution": "bundler"` paired with `"module": "esnext"`:
+bundler resolution is designed for exactly this "type-check only" case
+and skips the CJS/ESM boundary rules entirely.
+
+Verified both directions again with the new config: deliberately
+introduced a type error project-wide, confirmed `npx tsc` caught it;
+reverted, confirmed clean.
+
 Week 3 complete: both fetch_pr_diff and run_checks working, tested
-end-to-end.
+end-to-end, and run_checks now scales to the whole project automatically.

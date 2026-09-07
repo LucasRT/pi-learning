@@ -13,18 +13,18 @@ function getDiffStat(): string {
 }
 
 export default function (pi: ExtensionAPI) {
-  // TOOL — run type checks on git-diff-stat and github.ts
+  // TOOL — run type checks on the whole project, via tsconfig.json
   pi.registerTool({
     name: "run_checks",
     label: "Run Type Checks",
-    description: "Run TypeScript checks on git-diff-stat and github.ts",
+    description: "Run TypeScript checks across the whole project (uses tsconfig.json)",
     promptSnippet: "Run TypeScript checks",
-    promptGuidelines: ["Use run_checks to run TypeScript checks on git-diff-stat and github.ts."],
+    promptGuidelines: ["Use run_checks to run TypeScript checks across the whole project."],
     parameters: Type.Object({}),
     async execute() {
       try {
         execSync(
-          "npx tsc --noEmit --skipLibCheck .pi/extensions/git-diff-stat.ts .pi/utils/github.ts",
+          "npx tsc",
           { encoding: "utf-8" }
         );
         return { content: [{ type: "text", text: "Type checks passed." }], details: {} };

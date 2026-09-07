@@ -101,3 +101,35 @@ Lesson: don't trust a doc summary's description of an expansion
 mechanism — read the actual shipped source when something silently
 doesn't work, especially for prompt-construction plumbing like this
 where the exact string shape matters a lot to weaker models.
+
+## Second bug found while testing: review ran, but nothing got saved
+After fixing the PR_NUMBER argument issue, retested with the same model
+(mistral-small-2503) and got a full correct review printed in the
+terminal — but `reviews/PR-1.md` was never created.
+
+Root cause: I had typed "review pr 1" as plain English, not `/review 1`.
+The skill still fired (apparently the model itself can decide to invoke
+`/skill:pr-review` based on its description, or some other routing path
+I haven't fully traced) — but since our `/review` command's handler is
+the *only* place that set the `pendingReviewPr` variable the save hook
+checked, and that command never ran, the `agent_settled` handler had
+nothing to key off and silently skipped saving.
+
+Also observed: mistral-small-2503 is non-deterministic on this — same
+model, same prompt shape, failed with tool-calls-as-text on the first
+attempt and worked correctly on a re-run. Worth remembering as a
+distinct flakiness mode from the earlier (worse, consistent) Ollama
+failures — this one is intermittent, not categorical.
+
+Fix: rewrote the save logic to stop tracking state from the command
+entirely. Instead, the `agent_settled` handler now regex-matches the
+final assistant text for the skill's own `# Review: PR #<number>`
+heading and pulls the PR number from there. This works regardless of
+how the skill got invoked — via `/review`, typing `/skill:pr-review`
+directly, or the model deciding to invoke it on its own — because it
+keys off what was actually produced, not how we think it got triggered.
+
+Lesson: don't build save/logging logic on an assumption about the only
+way a feature will be invoked. Extract the fact you actually need
+(the PR number) from the artifact itself when possible, rather than from
+tracking your own believed call path.

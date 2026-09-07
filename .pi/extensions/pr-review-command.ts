@@ -2,23 +2,14 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-// Tracks which PR number (if any) the *current* agent run is reviewing, so
-// the agent_settled handler below knows whether/where to save a result.
-// This only works because Pi runs one agent turn at a time per session —
-// it would need to be keyed by session id to be safe with multiple
-// concurrent sessions, but for a single interactive `pi` session this is
-// fine.
-let pendingReviewPr: string | null = null;
-
 /**
- * Pull the plain text out of the most recent assistant message on the
- * current branch. We deliberately duck-type this instead of importing
- * AssistantMessage/TextContent from @earendil-works/pi-ai, because that
- * package is only hoisted into pi-coding-agent's own nested node_modules,
- * not into ours — importing it directly fails to resolve. Structural
- * typing sidesteps that.
+ * Pull the plain text out of an assistant message. We deliberately
+ * duck-type this instead of importing AssistantMessage/TextContent from
+ * @earendil-works/pi-ai, because that package is only hoisted into
+ * pi-coding-agent's own nested node_modules, not into ours — importing
+ * it directly fails to resolve. Structural typing sidesteps that.
  */
-function extractLatestAssistantText(message: unknown): string {
+function extractAssistantText(message: unknown): string {
   const m = message as { role?: string; content?: unknown };
   if (m?.role !== "assistant" || !Array.isArray(m.content)) {
     return "";
@@ -29,10 +20,19 @@ function extractLatestAssistantText(message: unknown): string {
     .join("\n");
 }
 
+// Matches the "# Review: PR #<number>" heading the pr-review skill is
+// instructed to produce as the first line of its report.
+const REVIEW_HEADING = /^#\s*Review:\s*PR\s*#(\d+)/m;
+
 export default function (pi: ExtensionAPI) {
-  // COMMAND — "/review <pr-number>" kicks off the /skill:pr-review skill
-  // with the PR number pre-filled, instead of the user typing the whole
-  // "/skill:pr-review 5" invocation by hand.
+  // COMMAND — "/review <pr-number>" is a convenience shortcut that kicks
+  // off the /skill:pr-review skill with the PR number pre-filled, instead
+  // of typing the whole "/skill:pr-review PR_NUMBER=5" invocation by hand.
+  // NOTE: this is *not* the only way the skill can end up running — the
+  // model can also invoke it itself (e.g. typing "review pr 1" in plain
+  // English was enough to trigger it in testing), so the save logic below
+  // does NOT depend on this command having been used. It's just a
+  // shortcut.
   pi.registerCommand("review", {
     description: "Run the pr-review skill for a given PR number and save the result to reviews/",
     async handler(args, ctx) {
@@ -41,41 +41,38 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify("Usage: /review <pr-number>", "error");
         return;
       }
-      pendingReviewPr = prNumber;
       pi.sendUserMessage(`/skill:pr-review PR_NUMBER=${prNumber}`, { expandPromptTemplates: true });
     },
   });
 
-  // EVENT HANDLER — fires once the agent run kicked off by /review has
-  // fully settled (model is done, no auto-retry/compaction pending).
-  // Grabs the final assistant text (the markdown review drafted by the
-  // pr-review skill) and writes it to reviews/PR-<n>.md.
+  // EVENT HANDLER — fires whenever an agent run fully settles, for any
+  // reason (not just /review). Looks at the most recent assistant text;
+  // if it looks like a finished pr-review report (starts with a
+  // "# Review: PR #<n>" heading), saves it to reviews/PR-<n>.md. Reading
+  // the PR number out of the report itself — rather than tracking it as
+  // state set by the /review command — means this works no matter how
+  // the skill was actually invoked.
   pi.on("agent_settled", async (_event, ctx) => {
-    if (!pendingReviewPr) {
-      return;
-    }
-    const prNumber = pendingReviewPr;
-    pendingReviewPr = null;
-
-    let reviewText = "";
+    let latestAssistantText = "";
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type === "message") {
-        const text = extractLatestAssistantText(entry.message);
+        const text = extractAssistantText(entry.message);
         if (text) {
-          reviewText = text; // keep overwriting; last one wins
+          latestAssistantText = text; // keep overwriting; last one wins
         }
       }
     }
 
-    if (!reviewText) {
-      ctx.ui.notify(`/review: no assistant text found to save for PR #${prNumber}`, "error");
-      return;
+    const match = latestAssistantText.match(REVIEW_HEADING);
+    if (!match) {
+      return; // not a finished review — nothing to save
     }
+    const prNumber = match[1];
 
     const reviewsDir = path.join(ctx.cwd, "reviews");
     await mkdir(reviewsDir, { recursive: true });
     const filePath = path.join(reviewsDir, `PR-${prNumber}.md`);
-    await writeFile(filePath, reviewText, "utf-8");
+    await writeFile(filePath, latestAssistantText, "utf-8");
     ctx.ui.notify(`Saved review to reviews/PR-${prNumber}.md`, "info");
   });
 }

@@ -115,7 +115,8 @@ live network requests, which aren't deterministic to begin with.
 
 ## Status
 
-Weeks 0–4 complete (setup, RPC driving, first extension, core tools,
-orchestrating skill). Week 5 (tests, this README, packaging) in
-progress. Full plan:
+v0.1.0 — all five weeks complete (setup, RPC driving, first extension,
+core tools, orchestrating skill, tests + packaging). See
+`docs/RETROSPECTIVE.md` for what was hard, what I'd change, and what's
+next. Full plan:
 https://claude.ai/code/artifact/7acc8edc-6170-46d3-a38d-c0f96078e2ea
